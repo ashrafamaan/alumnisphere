@@ -1,17 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <defs>
-    <radialGradient id="alumniSphereGrad" cx="35%" cy="30%" r="65%">
-      <stop offset="0%" stop-color="#FFD7D3" />
-      <stop offset="55%" stop-color="#FFB7B2" />
-      <stop offset="100%" stop-color="#F29A94" />
-    </radialGradient>
-  </defs>
-  <!-- Signature AlumniSphere Outer Orb -->
-  <circle cx="32" cy="32" r="28" fill="url(#alumniSphereGrad)" />
-  <!-- Subtle inner luminous highlight rim -->
-  <circle cx="32" cy="32" r="27.5" stroke="#FFF5F2" stroke-width="1" stroke-opacity="0.9" />
-  <!-- Inner White Core Sphere -->
+  <!-- Solid Darker Coral Outer Circle -->
+  <circle cx="32" cy="32" r="28" fill="#E06D66" />
+  <!-- Center White Core -->
   <circle cx="32" cy="32" r="9" fill="#FFFFFF" />
-  <!-- Specular glint on core -->
-  <circle cx="30" cy="30" r="2.5" fill="#FFFFFF" />
 </svg>
