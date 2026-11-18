@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: "AlumniSphere • Human-First Mentorship",
   description:
     "A softly crafted mentorship platform where verified alumni guide students through intentional, decay-free connections.",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export default function RootLayout({
