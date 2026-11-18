@@ -1,0 +1,268 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  role          String    // "STUDENT", "ALUMNI", "ADMIN"
+  avatarUrl     String?
+  department    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  alumniProfile AlumniProfile?
+  studentProfile StudentProfile?
+
+  // Relationships as student or alumni
+  sentRequests        MentorshipRequest[]      @relation("StudentRequests")
+  receivedRequests    MentorshipRequest[]      @relation("AlumniRequests")
+  
+  studentRelationships MentorshipRelationship[] @relation("StudentInRelationship")
+  alumniRelationships  MentorshipRelationship[] @relation("AlumniInRelationship")
+
+  studentSessions     MentorshipSession[]      @relation("StudentSessions")
+  alumniSessions      MentorshipSession[]      @relation("AlumniSessions")
+
+  sentMessages        DirectMessage[]          @relation("SentMessages")
+  receivedMessages    DirectMessage[]          @relation("ReceivedMessages")
+
+  givenFeedbacks      SessionFeedback[]        @relation("FeedbackGiver")
+  receivedFeedbacks   SessionFeedback[]        @relation("FeedbackReceiver")
+
+  sessions            Session[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+}
+
+model AlumniProfile {
+  id                    String    @id @default(cuid())
+  userId                String    @unique
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  headline              String    // e.g. "Staff ML Engineer @ OpenAI | Ex-Google"
+  currentCompany        String
+  currentRole           String
+  industry              String
+  yearsOfExperience     Int
+  
+  // Verification details for Institutional Trust
+  graduationYear        Int
+  degree                String
+  studentIdNumber       String?   // Roll number when they studied
+  verificationDocUrl    String?   // Uploaded proof or degree image
+  linkedInUrl           String?
+  workEmail             String?   // For enterprise verification
+  verificationStatus    String    @default("PENDING") // "PENDING", "VERIFIED", "REJECTED"
+  verificationNotes     String?
+  verifiedAt            DateTime?
+
+  bio                   String
+  skills                String    // JSON or comma-separated tags
+  mentoringTopics       String    // JSON array of mentoring topics (e.g. Resume, Interview, System Design)
+  
+  // Mentoring Capacity and Availability controls
+  maxMenteesCapacity    Int       @default(3)
+  availableHoursPerWeek Float     @default(2.0)
+  preferredTimeSlots    String    // JSON array: ["Saturday Morning", "Weekday Evenings"]
+  acceptingNewMentees   Boolean   @default(true)
+  
+  // Contact details protection
+  protectContactDetails Boolean   @default(true)
+  proxyEmail            String?   // e.g. "alex.c@alumni-relay.edu"
+  directPhoneMasked     String?   // e.g. "+1 ••• ••• 4291"
+  
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model StudentProfile {
+  id                  String    @id @default(cuid())
+  userId              String    @unique
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  graduationYear      Int
+  degree              String
+  studentIdNumber     String
+  cgpa                Float?
+  
+  careerGoals         String    // Stated aspirations: e.g. "Aiming for cloud solutions architect or backend engineer"
+  targetIndustries    String    // JSON array: ["Cloud Computing", "Fintech"]
+  targetRoles         String    // JSON array: ["Backend Engineer", "DevOps Specialist"]
+  skillsToDevelop     String    // JSON array: ["Kubernetes", "Distributed Systems", "LeetCode Prep"]
+  
+  bio                 String?
+  resumeUrl           String?
+  githubUrl           String?
+  linkedInUrl         String?
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model MentorshipRequest {
+  id              String    @id @default(cuid())
+  studentId       String
+  student         User      @relation("StudentRequests", fields: [studentId], references: [id], onDelete: Cascade)
+  alumniId        String
+  alumni          User      @relation("AlumniRequests", fields: [alumniId], references: [id], onDelete: Cascade)
+  
+  status          String    @default("PENDING") // "PENDING", "ACCEPTED", "DECLINED", "CANCELLED"
+  message         String    // Student's initial statement & ask
+  preferredTrack  String?   // "Career Guidance", "Resume & Mock", "Grad School Prep", "General"
+  responseNote    String?   // Mentor's feedback or reason
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  relationship    MentorshipRelationship?
+}
+
+model MentorshipRelationship {
+  id                  String    @id @default(cuid())
+  requestId           String?   @unique
+  request             MentorshipRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  
+  studentId           String
+  student             User      @relation("StudentInRelationship", fields: [studentId], references: [id], onDelete: Cascade)
+  alumniId            String
+  alumni              User      @relation("AlumniInRelationship", fields: [alumniId], references: [id], onDelete: Cascade)
+  
+  status              String    @default("ACTIVE") // "ACTIVE", "PAUSED", "COMPLETED"
+  startDate           DateTime  @default(now())
+  endDate             DateTime?
+  
+  // Anti-decay & engagement metrics
+  lastInteractionDate DateTime  @default(now())
+  decayRiskStatus     String    @default("HEALTHY") // "HEALTHY" (<= 7 days), "NEEDS_CHECKIN" (8-14 days), "STALLED" (>14 days)
+  healthScore         Int       @default(95)        // 0-100 engagement score
+  
+  notes               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  sessions            MentorshipSession[]
+  goals               MentorshipGoal[]
+  messages            DirectMessage[]
+}
+
+model MentorshipSession {
+  id                  String    @id @default(cuid())
+  relationshipId      String
+  relationship        MentorshipRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  
+  studentId           String
+  student             User      @relation("StudentSessions", fields: [studentId], references: [id], onDelete: Cascade)
+  alumniId            String
+  alumni              User      @relation("AlumniSessions", fields: [alumniId], references: [id], onDelete: Cascade)
+  
+  title               String
+  description         String?
+  scheduledDate       DateTime
+  durationMinutes     Int       @default(45)
+  status              String    @default("SCHEDULED") // "SCHEDULED", "COMPLETED", "CANCELLED", "RESCHEDULED"
+  
+  // Protected built-in virtual room URL
+  virtualMeetingUrl   String
+  agenda              String?
+  
+  // Meeting outcomes
+  meetingSummary      String?
+  alumniPrivateNotes  String?
+  studentPrivateNotes String?
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  feedbacks           SessionFeedback[]
+}
+
+model MentorshipGoal {
+  id              String    @id @default(cuid())
+  relationshipId  String
+  relationship    MentorshipRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  
+  title           String
+  description     String?
+  targetDate      DateTime?
+  status          String    @default("IN_PROGRESS") // "IN_PROGRESS", "ACHIEVED", "BLOCKED"
+  priority        String    @default("MEDIUM")      // "HIGH", "MEDIUM", "LOW"
+  progressPercent Int       @default(0)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  actionItems     ActionItem[]
+}
+
+model ActionItem {
+  id              String    @id @default(cuid())
+  goalId          String
+  goal            MentorshipGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  
+  title           String
+  assignedRole    String    @default("STUDENT") // "STUDENT" or "ALUMNI"
+  dueDate         DateTime?
+  isCompleted     Boolean   @default(false)
+  completedAt     DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model SessionFeedback {
+  id                String    @id @default(cuid())
+  sessionId         String
+  session           MentorshipSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  giverId           String
+  giver             User      @relation("FeedbackGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  receiverId        String
+  receiver          User      @relation("FeedbackReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  rating            Int       // 1-5 scale
+  comments          String
+  keyTakeaways      String?
+  followUpRequired  Boolean   @default(false)
+  
+  createdAt         DateTime  @default(now())
+}
+
+model DirectMessage {
+  id              String    @id @default(cuid())
+  relationshipId  String
+  relationship    MentorshipRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+  
+  senderId        String
+  sender          User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId      String
+  receiver        User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  content         String
+  isRead          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+}
+
+model InstitutionalAuditLog {
+  id          String    @id @default(cuid())
+  eventType   String    // "ALUMNI_VERIFIED", "PAIRING_CREATED", "DECAY_WARNING", "FEEDBACK_SUBMITTED"
+  actorName   String
+  targetName  String?
+  description String
+  severity    String    @default("INFO") // "INFO", "WARNING", "SUCCESS", "CRITICAL"
+  createdAt   DateTime  @default(now())
+}
