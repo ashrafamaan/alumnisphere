@@ -177,8 +177,11 @@ export async function POST(request: Request) {
     });
   } catch (err: any) {
     console.error("Register API error:", err);
+    const message = err?.message?.includes("Unique constraint")
+      ? "An account with this email address or identifier already exists."
+      : (err?.message || "Registration failed. Please verify your details.");
     return NextResponse.json(
-      { error: "Registration failed. Please verify your details." },
+      { error: message },
       { status: 500 }
     );
   }

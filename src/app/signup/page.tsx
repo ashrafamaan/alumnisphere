@@ -160,18 +160,15 @@ export default function SignUpPage() {
 
       if (!res.success) {
         setError(res.error || "Registration failed. Please check your inputs.");
+        setIsSubmitting(false);
         return;
       }
 
-      // Route after successful registration
-      if (role === "ALUMNI") {
-        router.push("/dashboard");
-      } else {
-        router.push("/mentors");
-      }
+      // Route after successful registration - full reload ensures fresh session cookie and state
+      const targetUrl = role === "ALUMNI" ? "/dashboard" : "/mentors";
+      window.location.href = targetUrl;
     } catch (err: any) {
       setError(err.message || "Something went wrong during registration.");
-    } finally {
       setIsSubmitting(false);
     }
   };

@@ -163,13 +163,13 @@ export default function Navbar() {
       const targetUser = availableUsers.find(
         (u) => u.email.toLowerCase() === loginEmail.toLowerCase().trim()
       );
-      if (targetUser?.role === "ALUMNI") {
-        router.push("/dashboard");
-      } else if (targetUser?.role === "ADMIN") {
-        router.push("/admin");
-      } else {
-        router.push("/mentors");
-      }
+      const dest =
+        targetUser?.role === "ALUMNI"
+          ? "/dashboard"
+          : targetUser?.role === "ADMIN"
+          ? "/admin"
+          : "/mentors";
+      window.location.href = dest;
     } else {
       setAuthError(res.error || "Invalid email or credentials");
     }
